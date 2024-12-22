@@ -3,15 +3,22 @@ package com.epam.training.gen.ai.config;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.core.credential.AzureKeyCredential;
+import com.epam.training.gen.ai.plugin.CurrencyConverterPlugin;
+import com.epam.training.gen.ai.plugin.TrafficLightPlugin;
 import com.epam.training.gen.ai.service.ModelService;
 import com.microsoft.semantickernel.Kernel;
 import com.microsoft.semantickernel.aiservices.openai.chatcompletion.OpenAIChatCompletion;
+import com.microsoft.semantickernel.orchestration.InvocationContext;
+import com.microsoft.semantickernel.orchestration.PromptExecutionSettings;
+import com.microsoft.semantickernel.orchestration.ToolCallBehavior;
+import com.microsoft.semantickernel.plugin.KernelPluginFactory;
 import com.microsoft.semantickernel.services.chatcompletion.ChatCompletionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
+
 
 @Configuration
 public class OpenAIConfig {
@@ -24,9 +31,6 @@ public class OpenAIConfig {
 
   @Value("${client-openai-deployment-name}")
   private String modelId;
-
-  @Value("${client-azureopenai-deployment-name}")
-  private String azureOpenAIDeploymentName;
 
   @Bean
   public OpenAIAsyncClient openAIClient() {
@@ -46,31 +50,24 @@ public class OpenAIConfig {
   }
 
   @Bean
-  @Qualifier("azureOpenAiChatCompletion")
-  public OpenAIChatCompletion chatCompletionServiceAzure() {
-    return OpenAIChatCompletion.builder()
-        .withModelId(azureOpenAIDeploymentName)
-        .withOpenAIAsyncClient(openAIClient())
-        .build();
-  }
-
-  @Bean
   @Scope(value = "prototype")
   @Qualifier("configurableChatCompletion")
-  public OpenAIChatCompletion chatCompletionServiceWithDeployment(String deploymentName) {
+  public OpenAIChatCompletion chatCompletionServiceWithModel(String modelId) {
     return OpenAIChatCompletion.builder()
-        .withModelId(deploymentName)
+        .withModelId(modelId)
         .withOpenAIAsyncClient(openAIClient())
         .build();
   }
 
   @Bean
-  public Kernel kernel() {
+  public Kernel kernel(
+      @Qualifier("openAiChatCompletion") ChatCompletionService chatCompletionService) {
     return Kernel.builder()
-        .withAIService(ChatCompletionService.class, OpenAIChatCompletion.builder()
-            .withModelId(modelId)
-            .withOpenAIAsyncClient(openAIClient())
-            .build())
+        .withAIService(ChatCompletionService.class, chatCompletionService)
+        .withPlugin(KernelPluginFactory.createFromObject(new CurrencyConverterPlugin(),
+            "CurrencyConverterPlugin"))
+        .withPlugin(
+            KernelPluginFactory.createFromObject(new TrafficLightPlugin(), "TrafficLightPlugin"))
         .build();
   }
 
@@ -78,4 +75,15 @@ public class OpenAIConfig {
   public ModelService modelService() {
     return new ModelService(apiKey, openAIEndpoint);
   }
+
+  @Bean
+  public InvocationContext invocationContext() {
+    return InvocationContext.builder()
+        .withPromptExecutionSettings(PromptExecutionSettings.builder()
+            .withTemperature(0.2)
+            .build())
+        .withToolCallBehavior(ToolCallBehavior.allowAllKernelFunctions(true))
+        .build();
+  }
+
 }
