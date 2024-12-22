@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class InputDto {
   private String input;
+  private PromptSettingsDto settings;
 }
