@@ -1,65 +1,67 @@
 package com.epam.training.gen.ai.service;
 
+import com.epam.training.gen.ai.model.PromptDto;
 import com.microsoft.semantickernel.Kernel;
-import com.microsoft.semantickernel.orchestration.FunctionResult;
+import com.microsoft.semantickernel.aiservices.openai.chatcompletion.OpenAIChatCompletion;
+import com.microsoft.semantickernel.orchestration.InvocationContext;
 import com.microsoft.semantickernel.orchestration.PromptExecutionSettings;
-import com.microsoft.semantickernel.semanticfunctions.KernelFunction;
-import com.microsoft.semantickernel.semanticfunctions.KernelFunctionArguments;
+import com.microsoft.semantickernel.services.chatcompletion.AuthorRole;
 import com.microsoft.semantickernel.services.chatcompletion.ChatHistory;
 import com.microsoft.semantickernel.services.chatcompletion.ChatMessageContent;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
+@Slf4j
 public class PromptService {
 
   private static final Logger LOG = LoggerFactory.getLogger(PromptService.class);
 
-  @Autowired
-  private Kernel kernel;
-
+  private ObjectProvider<OpenAIChatCompletion> chatCompletionProvider;
   private ChatHistory chatHistory;
 
-  private KernelFunction<String> chat;
-
-  public PromptService() {
-    chatHistory = new ChatHistory("You are a librarian, expert about books");
-
-    chat = KernelFunction.<String>createFromPrompt(
-            """ 
-                User: {{$request}}
-                """)
-        .build();
+  @Autowired
+  public PromptService(@Qualifier("configurableChatCompletion")
+  ObjectProvider<OpenAIChatCompletion> chatCompletionProvider) {
+    this.chatCompletionProvider = chatCompletionProvider;
+    chatHistory = new ChatHistory();
   }
 
-  public String generateChatResponse(String request, double temperature, double top) {
+  public String getModelResponse(PromptDto promptInput) {
+    LOG.info("Prompt={}, model={}", promptInput.getPrompt(), promptInput.getModelId());
 
-    LOG.info("User > {}", request);
+    OpenAIChatCompletion openAIChatCompletion = chatCompletionProvider.getObject(
+        promptInput.getModelId());
 
-    KernelFunctionArguments arguments = KernelFunctionArguments.builder()
-        .withVariable("request", request)
-        .withVariable("history", chatHistory)
-        .build();
+    Kernel kernel = getKernel(openAIChatCompletion);
 
-    FunctionResult<String> chatResult = chat.invokeAsync(kernel)
-        .withArguments(arguments)
+    double temperature = normalize(promptInput.getSettings().getTemperature());
+    double top = normalize(promptInput.getSettings().getTop());
+
+    List<ChatMessageContent<?>> responseList = openAIChatCompletion.getChatMessageContentsAsync(
+            promptInput.getPrompt(), kernel,
+            getInvocationContext(promptInput.getModelId(), temperature, top))
         .block();
 
-    String response = chatResult.getResult();
+    chatHistory.addAll(responseList);
 
-    LOG.info("Assistant > {}", response);
+    String modelResponse = responseList.stream()
+        .filter(response -> AuthorRole.ASSISTANT.equals(response.getAuthorRole()))
+        .map(ChatMessageContent::getContent)
+        .collect(Collectors.joining(","));
 
-    // Append to history
-    chatHistory.addUserMessage(request);
-    chatHistory.addAssistantMessage(response);
+    LOG.info("Model response = {}", modelResponse);
 
-    return response;
+    return modelResponse;
   }
 
   public Map<String, String> getChatHistory() {
@@ -72,11 +74,26 @@ public class PromptService {
     return historyMap;
   }
 
-  private PromptExecutionSettings getPromptExecutionSettings(double temperature, double top) {
-    return PromptExecutionSettings.builder()
-        .withMaxTokens(500)
-        .withTemperature(temperature)
-        .withTopP(top)
+  public Kernel getKernel(OpenAIChatCompletion chatCompletion) {
+    return Kernel.builder()
+        .withAIService(OpenAIChatCompletion.class, chatCompletion)
         .build();
+  }
+
+  public InvocationContext getInvocationContext(String modelId, double temperature, double top) {
+    return InvocationContext.builder()
+        .withPromptExecutionSettings(PromptExecutionSettings.builder()
+            .withModelId(modelId)
+            .withTemperature(temperature)
+            .withTopP(top)
+            .build())
+        .build();
+  }
+
+  private double normalize(double value) {
+    if (value < 0 || value > 1) {
+      return 0;
+    }
+    return value;
   }
 }
