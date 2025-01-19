@@ -1,5 +1,7 @@
 package com.epam.training.gen.ai.service;
 
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
 import com.epam.training.gen.ai.model.PromptDto;
 import com.microsoft.semantickernel.Kernel;
 import com.microsoft.semantickernel.aiservices.openai.chatcompletion.OpenAIChatCompletion;
@@ -26,7 +28,12 @@ public class PromptService {
 
   private static final Logger LOG = LoggerFactory.getLogger(PromptService.class);
 
+  private static final String DEFAULT_SYSTEM_MESSAGE = """
+          Act as an assistant and answer question.
+      """;
+
   private ObjectProvider<OpenAIChatCompletion> chatCompletionProvider;
+
   private ChatHistory chatHistory;
 
   @Autowired
@@ -36,7 +43,15 @@ public class PromptService {
     chatHistory = new ChatHistory();
   }
 
-  public String getModelResponse(PromptDto promptInput) {
+  public String getModelResponse(boolean cleanHistory, String systemMessage, PromptDto promptDto) {
+    if (cleanHistory) {
+      chatHistory = new ChatHistory();
+    }
+    return getModelResponse(systemMessage, promptDto);
+  }
+
+
+  public String getModelResponse(String systemMessage, PromptDto promptInput) {
     LOG.info("Prompt={}, model={}", promptInput.getPrompt(), promptInput.getModelId());
 
     OpenAIChatCompletion openAIChatCompletion = chatCompletionProvider.getObject(
@@ -47,8 +62,15 @@ public class PromptService {
     double temperature = normalize(promptInput.getSettings().getTemperature());
     double top = normalize(promptInput.getSettings().getTop());
 
+    if (isEmpty(systemMessage)) {
+      systemMessage = DEFAULT_SYSTEM_MESSAGE;
+    }
+
+    chatHistory.addSystemMessage(systemMessage);
+    chatHistory.addUserMessage(promptInput.getPrompt());
+
     List<ChatMessageContent<?>> responseList = openAIChatCompletion.getChatMessageContentsAsync(
-            promptInput.getPrompt(), kernel,
+            chatHistory, kernel,
             getInvocationContext(promptInput.getModelId(), temperature, top))
         .block();
 
