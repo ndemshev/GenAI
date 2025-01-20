@@ -34,7 +34,7 @@ public class RagController {
     log.info("Initialize context for the file: {}", fileInputDto.getFilename());
 
     String result = ragService.initializeContext(
-        isBlank(fileInputDto.getFilename()) ? "resources/RAG.txt" : fileInputDto.getFilename());
+        isBlank(fileInputDto.getFilename()) ? "RAG.txt" : fileInputDto.getFilename());
 
     return new ResponseEntity<>(result, HttpStatus.CREATED);
   }

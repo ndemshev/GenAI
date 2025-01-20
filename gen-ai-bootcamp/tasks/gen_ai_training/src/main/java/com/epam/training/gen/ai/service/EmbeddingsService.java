@@ -117,7 +117,7 @@ public class EmbeddingsService {
               scoredPoint.getVersion(),
               scoredPoint.getScore(),
               payload,
-              scoredPoint.getPayloadOrDefault("text", value("(no data)")).getStringValue());
+              scoredPoint.getPayloadOrDefault("info", value("(no data)")).getStringValue());
         }).collect(Collectors.toList());
   }
 
