@@ -1,0 +1,5 @@
+RAG is a hybrid framework that combines retrieval-based and generative methods to answer queries. It retrieves relevant information from a dataset and generates context-aware responses.
+
+RAG can be implemented using tools like vector search engines for retrieval and large language models for generation. Popular frameworks include OpenAI's GPT and Hugging Face Transformers.
+
+Common use cases for RAG include improving chatbot interactions, summarizing large documents, and providing intelligent search capabilities for enterprise systems.

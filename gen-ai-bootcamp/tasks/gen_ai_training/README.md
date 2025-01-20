@@ -156,3 +156,81 @@ http://localhost:8080/api/embeddings/search
     }
 ]
 ````
+
+# RAG
+
+## Set Context
+
+### Request (will use default resources/RAG.txt)
+
+````
+POST http://localhost:8080/api/rag/context
+{}
+````
+
+### Response
+````
+HttpStatus 201
+
+Success
+````
+
+## Questions
+
+### Request
+````
+POST http://localhost:8080/api/rag/question
+{
+    "input" : "What is RAG?",
+    "cleanHistory": false
+}
+````
+
+### Response
+````
+RAG is a hybrid framework that combines retrieval-based and generative methods to answer queries. It retrieves relevant information from a dataset and generates context-aware responses.
+````
+
+### Request
+````
+POST http://localhost:8080/api/rag/question
+{
+    "input" : "How is RAG implemented?",
+    "cleanHistory": false
+}
+````
+
+### Response
+````
+RAG can be implemented using tools like vector search engines for retrieval and large language models for generation. Popular frameworks for implementing RAG include OpenAI's GPT and Hugging Face Transformers.
+````
+
+### Request
+````
+POST http://localhost:8080/api/rag/question
+{
+    "input" : "What are the use cases of RAG",
+    "cleanHistory": false
+}
+````
+
+### Response
+````
+Common use cases for RAG include improving chatbot interactions, summarizing large documents, and providing intelligent search capabilities for enterprise systems.
+````
+
+### Request
+````
+POST http://localhost:8080/api/rag/question
+{
+    "input" : "What is the LLM?",
+    "cleanHistory": false
+}
+````
+
+### Response
+````
+No Data provided
+````
+
+

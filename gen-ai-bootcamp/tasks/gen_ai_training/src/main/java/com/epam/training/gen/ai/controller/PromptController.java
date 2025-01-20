@@ -25,7 +25,7 @@ public class PromptController {
 
   @PostMapping
   public ResponseEntity<String> getModelResponse(@RequestBody PromptDto promptInput) {
-    String response = promptService.getModelResponse(promptInput);
+    String response = promptService.getModelResponse("", promptInput);
     return new ResponseEntity<>(response, HttpStatus.OK);
   }
 

@@ -19,4 +19,5 @@ public class SearchResponse {
   private long version;
   private float score;
   private Map<String, String> payload;
+  private String text;
 }

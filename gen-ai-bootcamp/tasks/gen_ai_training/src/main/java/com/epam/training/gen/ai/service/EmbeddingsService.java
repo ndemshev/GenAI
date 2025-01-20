@@ -116,7 +116,8 @@ public class EmbeddingsService {
           return new SearchResponse(scoredPoint.getId().getNum(),
               scoredPoint.getVersion(),
               scoredPoint.getScore(),
-              payload);
+              payload,
+              scoredPoint.getPayloadOrDefault("info", value("(no data)")).getStringValue());
         }).collect(Collectors.toList());
   }
 
